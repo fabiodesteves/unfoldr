@@ -1,27 +1,57 @@
-import React, { useMemo, useState, KeyboardEvent } from 'react';
+import React, { useMemo, useState, KeyboardEvent, useEffect } from 'react';
 import { createEditor, Descendant } from 'slate';
 import { Slate, Editable, withReact } from 'slate-react';
+import { useRouter } from 'next/navigation';
 
 type ParagraphElement = { type: 'paragraph'; children: { text: string }[] };
 
 const DocumentPage = () => {
+  const router = useRouter();
   const editor = useMemo(() => withReact(createEditor()), []);
-  const [title, setTitle] = useState('Untitled Document');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const initialValue: Descendant[] = [
+  
+  // Initialize state with null first
+  const [title, setTitle] = useState<string | null>(null);
+  const [value, setValue] = useState<Descendant[]>([
     {
       type: 'paragraph',
       children: [{ text: '' }],
-    } as ParagraphElement,
-  ];
+    },
+  ]);
 
-  const [value, setValue] = React.useState<Descendant[]>(initialValue);
+  // Load data from localStorage after component mounts
+  useEffect(() => {
+    const savedTitle = localStorage.getItem('document-title');
+    setTitle(savedTitle || 'Untitled Document');
+
+    const savedContent = localStorage.getItem('document-content');
+    if (savedContent) {
+      setValue(JSON.parse(savedContent));
+    }
+  }, []);
+
+  // Save title to localStorage when it changes
+  useEffect(() => {
+    if (title) {
+      localStorage.setItem('document-title', title);
+    }
+  }, [title]);
+
+  // Save content to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('document-content', JSON.stringify(value));
+  }, [value]);
 
   const handleTitleEdit = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       setIsEditingTitle(false);
     }
   };
+
+  // Show loading state while title is null
+  if (title === null) {
+    return null; // or a loading spinner
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
@@ -52,14 +82,14 @@ const DocumentPage = () => {
         )}
       </header>
       
-      <div className="max-w-[850px] min-h-[1100px] mx-auto bg-white rounded-2xl shadow-lg p-12">
+      <div className="max-w-[850px] h-[calc(100vh-8rem)] mx-auto bg-white rounded-2xl shadow-lg p-12 overflow-auto">
         <Slate 
           editor={editor} 
-          initialValue={initialValue} 
+          initialValue={value} 
           onChange={newValue => setValue(newValue)}
         >
           <Editable
-            className="outline-none min-h-full"
+            className="outline-none h-full"
             placeholder="Start typing..."
           />
         </Slate>
